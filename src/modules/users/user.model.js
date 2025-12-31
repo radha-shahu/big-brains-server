@@ -46,3 +46,4 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 // Mongoose automatically uses "users" collection (pluralized, lowercased model name)
 // This will use: userdb database -> users collection
 module.exports = mongoose.model("User", userSchema);
+

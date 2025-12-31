@@ -1,7 +1,7 @@
 const { UnauthorizedError } = require("../utils/errors");
 const { verifyToken } = require("../utils/jwt");
-const User = require("../models/User");
-const { asyncHandler } = require("./errorHandler");
+const User = require("../modules/users/user.model");
+const { asyncHandler } = require("./error.middleware");
 
 // Protect routes - verify JWT token and attach user to request
 const protect = asyncHandler(async (req, res, next) => {

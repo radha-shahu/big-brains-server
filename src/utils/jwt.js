@@ -1,16 +1,17 @@
 const jwt = require("jsonwebtoken");
+const config = require("../config/env");
 
 // Generate JWT token
 const generateToken = (userId) => {
-    return jwt.sign({ userId }, process.env.JWT_SECRET || "your-secret-key-change-in-production", {
-        expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    return jwt.sign({ userId }, config.jwtSecret, {
+        expiresIn: config.jwtExpiresIn,
     });
 };
 
 // Verify JWT token
 const verifyToken = (token) => {
     try {
-        return jwt.verify(token, process.env.JWT_SECRET || "your-secret-key-change-in-production");
+        return jwt.verify(token, config.jwtSecret);
     } catch (error) {
         throw new Error("Invalid or expired token");
     }
