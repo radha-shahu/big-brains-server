@@ -1,12 +1,12 @@
-const User = require("../models/User");
-const { NotFoundError, BadRequestError, ConflictError, ForbiddenError } = require("../utils/errors");
-const { asyncHandler } = require("../middleware/errorHandler");
+const userService = require("./user.service");
+const userValidation = require("./user.validation");
+const { asyncHandler } = require("../../middlewares/error.middleware");
 
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Public
 const getUsers = asyncHandler(async (req, res) => {
-    const users = await User.find().sort({ createdAt: -1 });
+    const users = await userService.getAllUsers();
     res.status(200).json({
         status: "success",
         results: users.length,
@@ -20,12 +20,7 @@ const getUsers = asyncHandler(async (req, res) => {
 // @route   GET /api/users/:id
 // @access  Public
 const getUser = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.id);
-
-    if (!user) {
-        throw new NotFoundError("User not found");
-    }
-
+    const user = await userService.getUserById(req.params.id);
     res.status(200).json({
         status: "success",
         data: {
@@ -38,21 +33,8 @@ const getUser = asyncHandler(async (req, res) => {
 // @route   POST /api/users
 // @access  Public
 const createUser = asyncHandler(async (req, res) => {
-    const { name, email } = req.body;
-
-    // Basic validation
-    if (!name || !email) {
-        throw new BadRequestError("Name and email are required");
-    }
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-        throw new ConflictError("User with this email already exists");
-    }
-
-    const user = await User.create({ name, email });
-
+    userValidation.validateCreateUser(req.body);
+    const user = await userService.createUser(req.body);
     res.status(201).json({
         status: "success",
         data: {
@@ -65,15 +47,8 @@ const createUser = asyncHandler(async (req, res) => {
 // @route   PUT /api/users/:id
 // @access  Public
 const updateUser = asyncHandler(async (req, res) => {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
-        new: true,
-        runValidators: true,
-    });
-
-    if (!user) {
-        throw new NotFoundError("User not found");
-    }
-
+    userValidation.validateUpdateUser(req.body);
+    const user = await userService.updateUser(req.params.id, req.body);
     res.status(200).json({
         status: "success",
         data: {
@@ -86,12 +61,7 @@ const updateUser = asyncHandler(async (req, res) => {
 // @route   DELETE /api/users/:id
 // @access  Public
 const deleteUser = asyncHandler(async (req, res) => {
-    const user = await User.findByIdAndDelete(req.params.id);
-
-    if (!user) {
-        throw new NotFoundError("User not found");
-    }
-
+    await userService.deleteUser(req.params.id);
     res.status(204).json({
         status: "success",
         data: null,
@@ -103,8 +73,7 @@ const deleteUser = asyncHandler(async (req, res) => {
 // @access  Private
 const getMyProfile = asyncHandler(async (req, res) => {
     // req.user is set by protect middleware
-    const user = await User.findById(req.user._id);
-
+    const user = await userService.getUserById(req.user._id);
     res.status(200).json({
         status: "success",
         data: {

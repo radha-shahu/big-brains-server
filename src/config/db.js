@@ -1,11 +1,9 @@
 const mongoose = require("mongoose");
+const config = require("./env");
 
 const connectDB = async () => {
     try {
-        // Connection string format: mongodb://host:port/database
-        // This connects to the 'userdb' database
-        // Collections (like 'users') are created automatically when first document is inserted
-        const conn = await mongoose.connect(process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/userdb");
+        const conn = await mongoose.connect(config.mongodbUri);
         console.log(`✅ MongoDB connected: ${conn.connection.host}`);
         console.log(`📦 Database: ${conn.connection.name}`);
     } catch (error) {
