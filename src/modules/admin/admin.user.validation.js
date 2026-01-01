@@ -103,10 +103,53 @@ const validateResetPassword = (data) => {
     return true;
 };
 
+// Validate query parameters for get all users
+const validateGetAllUsersQuery = (queryParams) => {
+    const allowedParams = ["role", "isActive", "search"];
+    const providedParams = Object.keys(queryParams);
+
+    // Check for unknown parameters
+    const unknownParams = providedParams.filter((param) => !allowedParams.includes(param));
+    if (unknownParams.length > 0) {
+        throw new ValidationError(
+            `Invalid query parameter(s): ${unknownParams.join(", ")}. Allowed parameters are: ${allowedParams.join(", ")}`
+        );
+    }
+
+    // Validate role if provided
+    if (queryParams.role !== undefined && queryParams.role !== null && queryParams.role !== "") {
+        if (!Object.values(ROLES).includes(queryParams.role)) {
+            throw new ValidationError(
+                `Invalid role value: "${queryParams.role}". Role must be one of: ${Object.values(ROLES).join(", ")}`
+            );
+        }
+    }
+
+    // Validate isActive if provided
+    if (queryParams.isActive !== undefined && queryParams.isActive !== null && queryParams.isActive !== "") {
+        const isActiveStr = String(queryParams.isActive).toLowerCase();
+        if (isActiveStr !== "true" && isActiveStr !== "false") {
+            throw new ValidationError(
+                `Invalid isActive value: "${queryParams.isActive}". isActive must be "true" or "false"`
+            );
+        }
+    }
+
+    // Validate search if provided (should be a non-empty string)
+    if (queryParams.search !== undefined && queryParams.search !== null) {
+        if (typeof queryParams.search !== "string" || queryParams.search.trim().length === 0) {
+            throw new ValidationError("Search parameter must be a non-empty string");
+        }
+    }
+
+    return true;
+};
+
 module.exports = {
     validateCreateUser,
     validateUpdateUser,
     validateUpdateStatus,
     validateResetPassword,
+    validateGetAllUsersQuery,
 };
 

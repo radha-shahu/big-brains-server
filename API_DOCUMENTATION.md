@@ -27,16 +27,56 @@ The API uses role-based access control with three roles:
 
 All error responses include an `errorCode` field for programmatic handling:
 
-| Error Code | Meaning |
-|------------|---------|
-| `INVALID_CREDENTIALS` | Wrong email or password |
-| `ACCOUNT_DISABLED` | User account is disabled |
-| `FORBIDDEN` | Insufficient permissions |
-| `VALIDATION_ERROR` | Invalid input data |
-| `RESOURCE_NOT_FOUND` | Requested resource doesn't exist |
-| `BAD_REQUEST` | Malformed request |
-| `UNAUTHORIZED` | Missing or invalid token |
-| `CONFLICT` | Resource already exists |
+| Error Code | Meaning | Common Scenarios |
+|------------|---------|------------------|
+| `INVALID_CREDENTIALS` | Wrong email or password | Login with incorrect credentials |
+| `ACCOUNT_DISABLED` | User account is disabled | Login attempt with disabled account |
+| `FORBIDDEN` | Insufficient permissions | Non-admin accessing admin endpoints |
+| `VALIDATION_ERROR` | Invalid input data | Invalid query params, ObjectIds, or unknown fields |
+| `RESOURCE_NOT_FOUND` | Requested resource doesn't exist | User/project ID doesn't exist |
+| `BAD_REQUEST` | Malformed request | Invalid request format |
+| `UNAUTHORIZED` | Missing or invalid token | No token or expired token |
+| `CONFLICT` | Resource already exists | Duplicate email or other unique field |
+
+### Validation Error Details
+
+The `VALIDATION_ERROR` code is used for various validation failures:
+
+1. **Invalid Query Parameters**: Unknown parameter names or invalid values
+   ```json
+   {
+     "status": "fail",
+     "message": "Invalid query parameter(s): r. Allowed parameters are: role, isActive, search",
+     "errorCode": "VALIDATION_ERROR"
+   }
+   ```
+
+2. **Invalid ObjectId**: Invalid MongoDB ObjectId format in path parameters
+   ```json
+   {
+     "status": "fail",
+     "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId",
+     "errorCode": "VALIDATION_ERROR"
+   }
+   ```
+
+3. **Unknown Fields**: Fields not allowed in request body
+   ```json
+   {
+     "status": "fail",
+     "message": "PATCH /api/users/me does not accept the following field(s): role. Allowed fields: firstName, lastName, email, phone, skills",
+     "errorCode": "VALIDATION_ERROR"
+   }
+   ```
+
+4. **Invalid Parameter Values**: Valid parameter name but invalid value
+   ```json
+   {
+     "status": "fail",
+     "message": "Invalid role value: \"A\". Role must be one of: ADMIN, EMPLOYEE, MANAGER",
+     "errorCode": "VALIDATION_ERROR"
+   }
+   ```
 
 ---
 
@@ -323,7 +363,20 @@ Update own profile (restricted fields only).
 }
 ```
 
-**Note**: Backend will ignore any other fields (role, designation, manager, etc.)
+**Note**: Backend will reject requests with unknown fields. Only the fields listed above are allowed.
+
+#### Error Responses
+
+**Status Code**: `422 Validation Error`
+
+**Scenario**: Unknown field in request body
+```json
+{
+  "status": "fail",
+  "message": "PATCH /api/users/me does not accept the following field(s): role, designation. Allowed fields: firstName, lastName, email, phone, skills",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
 
 #### Success Response
 
@@ -363,10 +416,34 @@ Get a list of all projects.
 
 #### Query Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| status | string | Filter by status (ACTIVE, INACTIVE, COMPLETED, ON_HOLD) |
-| search | string | Search in name, projectCode, or clientName |
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| status | string | Filter by status (ACTIVE, INACTIVE, COMPLETED, ON_HOLD) | No |
+| search | string | Search in name, projectCode, or clientName | No |
+
+**Note**: Only the above parameters are accepted. Invalid parameters or values will result in validation errors.
+
+#### Error Responses
+
+**Status Code**: `422 Validation Error`
+
+**Scenario 1**: Invalid query parameter
+```json
+{
+  "status": "fail",
+  "message": "Invalid query parameter(s): filter. Allowed parameters are: status, search",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
+
+**Scenario 2**: Invalid status value
+```json
+{
+  "status": "fail",
+  "message": "Invalid status value: \"PENDING\". Status must be one of: ACTIVE, INACTIVE, COMPLETED, ON_HOLD",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
 
 #### Success Response
 
@@ -401,6 +478,21 @@ Get project details by ID.
 
 - **Endpoint**: `GET /api/projects/:projectId`
 - **Access**: Private (All authenticated users)
+
+**Note**: This endpoint does not accept query parameters. The `projectId` must be a valid MongoDB ObjectId.
+
+#### Error Responses
+
+**Status Code**: `422 Validation Error`
+
+**Scenario**: Invalid ObjectId format
+```json
+{
+  "status": "fail",
+  "message": "Invalid Project ID: \"invalid123\". Must be a valid MongoDB ObjectId",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
 
 ---
 
@@ -437,11 +529,24 @@ Create a new user (Admin only).
 ```
 
 **Note**: 
-- `employeeId` is auto-generated (format: EMP-YYYY-XXXX)
+- `employeeId` is auto-generated (format: EMP-YYYY-XXXX) - **Do not send this field**
 - `password` is required and will be hashed
 - `skills` can be empty array or omitted
 - `isActive` defaults to `true`
 - `isFirstLogin` defaults to `true`
+
+#### Error Responses
+
+**Status Code**: `422 Validation Error`
+
+**Scenario**: Unknown field in request body (e.g., employeeId)
+```json
+{
+  "status": "fail",
+  "message": "POST /api/admin/users does not accept the following field(s): employeeId, isActive. Allowed fields: firstName, lastName, email, password, phone, role, designation, department, manager, currentProject, skills, dateOfJoining, totalExperience, location",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
 
 #### Success Response
 
@@ -477,11 +582,13 @@ Get a list of all users with filters.
 
 #### Query Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| role | string | Filter by role (ADMIN, EMPLOYEE, MANAGER) |
-| isActive | boolean | Filter by active status |
-| search | string | Search in firstName, lastName, email, employeeId |
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| role | string | Filter by role (ADMIN, EMPLOYEE, MANAGER) | No |
+| isActive | boolean/string | Filter by active status ("true" or "false") | No |
+| search | string | Search in firstName, lastName, email, employeeId | No |
+
+**Note**: Only the above parameters are accepted. Any other query parameters will result in a validation error.
 
 #### Success Response
 
@@ -508,6 +615,37 @@ Get a list of all users with filters.
 }
 ```
 
+#### Error Responses
+
+**Status Code**: `422 Validation Error`
+
+**Scenario 1**: Invalid query parameter name
+```json
+{
+  "status": "fail",
+  "message": "Invalid query parameter(s): r. Allowed parameters are: role, isActive, search",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
+
+**Scenario 2**: Invalid role value
+```json
+{
+  "status": "fail",
+  "message": "Invalid role value: \"A\". Role must be one of: ADMIN, EMPLOYEE, MANAGER",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
+
+**Scenario 3**: Invalid isActive value
+```json
+{
+  "status": "fail",
+  "message": "Invalid isActive value: \"yes\". isActive must be \"true\" or \"false\"",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
+
 ---
 
 ### 3. Get User by ID
@@ -516,6 +654,30 @@ Get user details by ID.
 
 - **Endpoint**: `GET /api/admin/users/:userId`
 - **Access**: Private/Admin
+
+**Note**: This endpoint does not accept query parameters. The `userId` must be a valid MongoDB ObjectId.
+
+#### Error Responses
+
+**Status Code**: `422 Validation Error`
+
+**Scenario 1**: Invalid ObjectId format
+```json
+{
+  "status": "fail",
+  "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
+
+**Scenario 2**: Query parameters provided
+```json
+{
+  "status": "fail",
+  "message": "GET /api/admin/users/:userId does not accept query parameters. Received: role",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
 
 ---
 
@@ -536,6 +698,28 @@ Update user details (Admin only fields).
   "currentProject": "507f1f77bcf86cd799439012",
   "totalExperience": 5,
   "location": "San Francisco"
+}
+```
+
+#### Error Responses
+
+**Status Code**: `422 Validation Error`
+
+**Scenario 1**: Unknown field in request body
+```json
+{
+  "status": "fail",
+  "message": "PATCH /api/admin/users/:userId does not accept the following field(s): password, employeeId. Allowed fields: role, designation, department, manager, currentProject, pastProjects, dateOfJoining, totalExperience, location, isActive",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
+
+**Scenario 2**: Invalid ObjectId
+```json
+{
+  "status": "fail",
+  "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId",
+  "errorCode": "VALIDATION_ERROR"
 }
 ```
 
@@ -646,9 +830,22 @@ Create a new project (Admin only).
 ```
 
 **Note**: 
-- `projectCode` is auto-generated (format: PROJ-XXX-XXX, based on project name)
+- `projectCode` is auto-generated (format: PROJ-XXX-XXX, based on project name) - **Do not send this field**
 - `status` defaults to "ACTIVE" if not provided
 - Valid statuses: ACTIVE, INACTIVE, COMPLETED, ON_HOLD
+
+#### Error Responses
+
+**Status Code**: `422 Validation Error`
+
+**Scenario**: Unknown field in request body
+```json
+{
+  "status": "fail",
+  "message": "POST /api/admin/projects does not accept the following field(s): projectCode. Allowed fields: name, description, status, startDate, endDate, clientName",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
 
 #### Success Response
 
@@ -876,6 +1073,11 @@ curl -X POST http://localhost:3000/api/admin/users \
 - Removed public registration (admin-only user creation)
 - Added standardized error codes
 - Enhanced user and project models with additional fields
+- **Added comprehensive input validation**:
+  - Query parameter validation (rejects unknown/invalid parameters)
+  - Path parameter validation (validates ObjectIds)
+  - Request body validation (rejects unknown fields)
+  - Clear error messages for all validation failures
 
 ### Version 1.0.0
 - Initial API release

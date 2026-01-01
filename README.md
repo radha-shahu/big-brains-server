@@ -370,7 +370,7 @@ The API uses standardized error codes for programmatic handling:
 | `INVALID_CREDENTIALS` | 401 | Wrong email or password |
 | `ACCOUNT_DISABLED` | 401 | User account is disabled |
 | `FORBIDDEN` | 403 | Insufficient permissions |
-| `VALIDATION_ERROR` | 422 | Invalid input data |
+| `VALIDATION_ERROR` | 422 | Invalid input data (query params, ObjectIds, unknown fields) |
 | `RESOURCE_NOT_FOUND` | 404 | Resource doesn't exist |
 | `CONFLICT` | 409 | Resource already exists |
 
@@ -380,6 +380,58 @@ All error responses follow this format:
   "status": "fail" | "error",
   "message": "Error message",
   "errorCode": "ERROR_CODE"
+}
+```
+
+## ✅ Input Validation
+
+The API validates all inputs and returns clear error messages:
+
+### Query Parameter Validation
+- **Unknown parameters are rejected**: `GET /api/admin/users?r=ADMIN` → Error: "Invalid query parameter(s): r"
+- **Invalid values are rejected**: `GET /api/admin/users?role=A` → Error: "Invalid role value: 'A'. Role must be one of: ADMIN, EMPLOYEE, MANAGER"
+- **Endpoints that don't accept query params reject them**: `GET /api/users/me?role=ADMIN` → Error: "GET /api/users/me does not accept query parameters"
+
+### Path Parameter Validation
+- **Invalid ObjectIds are rejected**: `GET /api/users/invalid123` → Error: "Invalid User ID: 'invalid123'. Must be a valid MongoDB ObjectId"
+
+### Request Body Validation
+- **Unknown fields are rejected**: Sending `employeeId` in create user request → Error: "POST /api/admin/users does not accept the following field(s): employeeId"
+- **Only allowed fields are accepted**: Each endpoint documents which fields can be sent
+
+### Examples
+
+**Invalid Query Parameter:**
+```bash
+GET /api/admin/users?r=ADMIN
+# Response: 422
+{
+  "status": "fail",
+  "message": "Invalid query parameter(s): r. Allowed parameters are: role, isActive, search",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
+
+**Invalid ObjectId:**
+```bash
+GET /api/users/invalid123
+# Response: 422
+{
+  "status": "fail",
+  "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
+
+**Unknown Field in Request:**
+```bash
+PATCH /api/users/me
+Body: { "firstName": "John", "role": "ADMIN" }
+# Response: 422
+{
+  "status": "fail",
+  "message": "PATCH /api/users/me does not accept the following field(s): role. Allowed fields: firstName, lastName, email, phone, skills",
+  "errorCode": "VALIDATION_ERROR"
 }
 ```
 
