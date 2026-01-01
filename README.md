@@ -112,6 +112,52 @@ The server will start on `http://localhost:3000` (or the port specified in `.env
 ### Health Check
 Visit `http://localhost:3000/api` to verify the server is running.
 
+## 👤 Creating the First Admin User
+
+Since user registration is disabled (admin-only user creation), you need to create the first admin user before you can use the API.
+
+### Recommended: Using Seed Script
+
+Run the seed script to create the first admin user:
+
+```bash
+node scripts/seed-admin.js
+```
+
+This will:
+- ✅ Connect to your MongoDB database
+- ✅ Generate an employee ID automatically
+- ✅ Hash the password securely
+- ✅ Create the admin user with role "ADMIN"
+- ✅ Check if admin already exists to prevent duplicates
+
+**Default Admin Credentials:**
+- Email: `john@example.com`
+- Password: `temporary123`
+- Role: `ADMIN`
+
+**⚠️ Important**: Change the password after first login using `/api/auth/change-password`
+
+### Customizing Admin Details
+
+Edit `scripts/seed-admin.js` to change the admin user details before running:
+
+```javascript
+const adminData = {
+    firstName: "Your",
+    lastName: "Name",
+    email: "your-email@example.com",
+    password: "your-secure-password",
+    // ... other fields
+};
+```
+
+### Alternative: Direct MongoDB Insert
+
+If you prefer to insert directly into MongoDB, see [scripts/mongodb-admin-query.md](./scripts/mongodb-admin-query.md) for instructions.
+
+**Note**: You'll need to hash the password manually using bcrypt (cost factor 12) if inserting directly.
+
 ## 📁 Project Structure
 
 ```
@@ -354,7 +400,12 @@ All error responses follow this format:
 ## ⚠️ Important Notes
 
 ### First Admin User
-Since registration is disabled, the first admin user must be created directly in the database or via a seed script.
+Since registration is disabled, the first admin user must be created using the seed script:
+```bash
+node scripts/seed-admin.js
+```
+
+See the [Creating the First Admin User](#-creating-the-first-admin-user) section above for details.
 
 ### Field Restrictions
 - **Employees** can only update: firstName, lastName, email, phone, skills
