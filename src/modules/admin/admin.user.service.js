@@ -1,7 +1,53 @@
+const mongoose = require("mongoose");
 const User = require("../users/user.model");
+const Project = require("../projects/project.model");
 const { NotFoundError, ConflictError, BadRequestError, ERROR_CODES } = require("../../utils/errors");
 const { generateEmployeeId } = require("../../utils/generators");
 const { userDTO, userListDTO } = require("../users/user.dto");
+
+// Helper function to resolve manager ID (employeeId or ObjectId) to ObjectId
+const resolveManagerId = async (managerId) => {
+    if (!managerId) return null;
+    
+    // Check if it's a MongoDB ObjectId
+    if (mongoose.Types.ObjectId.isValid(managerId) && managerId.length === 24) {
+        // Validate that the user exists
+        const manager = await User.findById(managerId);
+        if (!manager) {
+            throw new NotFoundError(`Manager with ID "${managerId}" not found`);
+        }
+        return managerId;
+    } else {
+        // It's an employeeId, find the user and return their _id
+        const manager = await User.findOne({ employeeId: managerId });
+        if (!manager) {
+            throw new NotFoundError(`Manager with employeeId "${managerId}" not found`);
+        }
+        return manager._id;
+    }
+};
+
+// Helper function to resolve project ID (projectCode or ObjectId) to ObjectId
+const resolveProjectId = async (projectId) => {
+    if (!projectId) return null;
+    
+    // Check if it's a MongoDB ObjectId
+    if (mongoose.Types.ObjectId.isValid(projectId) && projectId.length === 24) {
+        // Validate that the project exists
+        const project = await Project.findById(projectId);
+        if (!project) {
+            throw new NotFoundError(`Project with ID "${projectId}" not found`);
+        }
+        return projectId;
+    } else {
+        // It's a projectCode, find the project and return its _id
+        const project = await Project.findOne({ projectCode: projectId });
+        if (!project) {
+            throw new NotFoundError(`Project with projectCode "${projectId}" not found`);
+        }
+        return project._id;
+    }
+};
 
 // Create new user (Admin only)
 const createUser = async (userData) => {
@@ -31,6 +77,12 @@ const createUser = async (userData) => {
     // Generate employeeId
     const employeeId = await generateEmployeeId();
 
+    // Resolve manager ID if provided
+    const resolvedManagerId = manager ? await resolveManagerId(manager) : null;
+    
+    // Resolve currentProject ID if provided
+    const resolvedCurrentProjectId = currentProject ? await resolveProjectId(currentProject) : null;
+
     // Create user
     const user = await User.create({
         employeeId,
@@ -42,8 +94,8 @@ const createUser = async (userData) => {
         role: role || "EMPLOYEE",
         designation,
         department,
-        manager,
-        currentProject,
+        manager: resolvedManagerId,
+        currentProject: resolvedCurrentProjectId,
         skills: skills || [],
         dateOfJoining,
         totalExperience,
@@ -145,16 +197,41 @@ const updateUser = async (userId, updateData) => {
         }
     });
 
-    // Handle pastProjects - if provided, append to existing array
+    // Resolve manager ID if provided
+    if (updateData.manager !== undefined) {
+        if (updateData.manager === null) {
+            // Allow setting manager to null
+            filteredData.manager = null;
+        } else {
+            filteredData.manager = await resolveManagerId(updateData.manager);
+        }
+    }
+
+    // Resolve currentProject ID if provided
+    if (updateData.currentProject !== undefined) {
+        if (updateData.currentProject === null) {
+            // Allow setting currentProject to null
+            filteredData.currentProject = null;
+        } else {
+            filteredData.currentProject = await resolveProjectId(updateData.currentProject);
+        }
+    }
+
+    // Handle pastProjects - if provided, resolve IDs and append to existing array
     if (updateData.pastProjects && Array.isArray(updateData.pastProjects)) {
         user = await User.findOne(query);
         if (user) {
-            // Merge with existing pastProjects, avoiding duplicates
-            const existingProjects = user.pastProjects || [];
-            const newProjects = updateData.pastProjects.filter(
-                (p) => !existingProjects.includes(p)
+            // Resolve all project IDs to ObjectIds
+            const resolvedProjectIds = await Promise.all(
+                updateData.pastProjects.map((projectId) => resolveProjectId(projectId))
             );
-            filteredData.pastProjects = [...existingProjects, ...newProjects];
+            
+            // Merge with existing pastProjects, avoiding duplicates
+            const existingProjects = (user.pastProjects || []).map((id) => id.toString());
+            const newProjects = resolvedProjectIds.filter(
+                (p) => !existingProjects.includes(p.toString())
+            );
+            filteredData.pastProjects = [...user.pastProjects, ...newProjects];
         }
     }
 

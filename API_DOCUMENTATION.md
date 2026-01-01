@@ -546,6 +546,14 @@ Create a new user (Admin only).
 - `skills` can be empty array or omitted
 - `isActive` defaults to `true`
 - `isFirstLogin` defaults to `true`
+- **`manager`** accepts either:
+  - MongoDB `_id` (e.g., `507f1f77bcf86cd799439013`)
+  - `employeeId` (e.g., `EMP-2025-0001`)
+  - The API validates that the manager exists
+- **`currentProject`** accepts either:
+  - MongoDB `_id` (e.g., `507f1f77bcf86cd799439012`)
+  - `projectCode` (e.g., `PROJ-CRM-001`)
+  - The API validates that the project exists
 
 #### Error Responses
 
@@ -725,6 +733,28 @@ Update user details (Admin only fields).
 }
 ```
 
+**Important Notes:**
+- **`manager`** accepts either:
+  - MongoDB `_id` (e.g., `507f1f77bcf86cd799439013`)
+  - `employeeId` (e.g., `EMP-2025-0001`)
+  - Set to `null` to remove manager assignment
+  - The API validates that the manager exists before updating
+- **`currentProject`** accepts either:
+  - MongoDB `_id` (e.g., `507f1f77bcf86cd799439012`)
+  - `projectCode` (e.g., `PROJ-CRM-001`)
+  - Set to `null` to remove project assignment
+  - The API validates that the project exists before updating
+- **`pastProjects`** accepts an array of project IDs (ObjectId or projectCode). New projects are appended to existing ones (no duplicates).
+
+**Example with custom IDs:**
+```json
+{
+  "manager": "EMP-2025-0001",
+  "currentProject": "PROJ-CRM-001",
+  "pastProjects": ["PROJ-ERP-002", "507f1f77bcf86cd799439012"]
+}
+```
+
 #### Error Responses
 
 **Status Code**: `422 Validation Error`
@@ -744,6 +774,33 @@ Update user details (Admin only fields).
   "status": "fail",
   "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)",
   "errorCode": "VALIDATION_ERROR"
+}
+```
+
+**Scenario 3**: Invalid manager ID
+```json
+{
+  "status": "fail",
+  "message": "Invalid manager ID: \"invalid123\". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)",
+  "errorCode": "VALIDATION_ERROR"
+}
+```
+
+**Scenario 4**: Manager not found
+```json
+{
+  "status": "fail",
+  "message": "Manager with employeeId \"EMP-9999-9999\" not found",
+  "errorCode": "RESOURCE_NOT_FOUND"
+}
+```
+
+**Scenario 5**: Project not found
+```json
+{
+  "status": "fail",
+  "message": "Project with projectCode \"PROJ-INVALID-001\" not found",
+  "errorCode": "RESOURCE_NOT_FOUND"
 }
 ```
 

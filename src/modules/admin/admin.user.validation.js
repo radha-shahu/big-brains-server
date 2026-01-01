@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const { ValidationError } = require("../../utils/errors");
 const { ROLES } = require("../../constants/roles");
 
@@ -10,6 +11,8 @@ const validateCreateUser = (data) => {
         password,
         role,
         phone,
+        manager,
+        currentProject,
     } = data;
 
     if (!firstName || !lastName) {
@@ -47,12 +50,66 @@ const validateCreateUser = (data) => {
         }
     }
 
+    // Validate manager if provided
+    if (manager !== undefined && manager !== null) {
+        validateManagerId(manager);
+    }
+
+    // Validate currentProject if provided
+    if (currentProject !== undefined && currentProject !== null) {
+        validateProjectId(currentProject, "Current project");
+    }
+
+    return true;
+};
+
+// Validate manager ID (supports ObjectId or employeeId)
+const validateManagerId = (managerId) => {
+    if (!managerId) return null; // manager is optional
+    
+    if (typeof managerId !== "string") {
+        throw new ValidationError("Manager must be a string (ObjectId or employeeId)");
+    }
+
+    // Check if it's a valid ObjectId
+    const isObjectId = mongoose.Types.ObjectId.isValid(managerId) && managerId.length === 24;
+    // Check if it's a valid employeeId format (EMP-YYYY-XXXX)
+    const isEmployeeId = /^EMP-\d{4}-\d{4}$/.test(managerId);
+
+    if (!isObjectId && !isEmployeeId) {
+        throw new ValidationError(
+            `Invalid manager ID: "${managerId}". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)`
+        );
+    }
+
+    return true;
+};
+
+// Validate project ID (supports ObjectId or projectCode)
+const validateProjectId = (projectId, fieldName = "Project") => {
+    if (!projectId) return null; // project is optional
+    
+    if (typeof projectId !== "string") {
+        throw new ValidationError(`${fieldName} must be a string (ObjectId or projectCode)`);
+    }
+
+    // Check if it's a valid ObjectId
+    const isObjectId = mongoose.Types.ObjectId.isValid(projectId) && projectId.length === 24;
+    // Check if it's a valid projectCode format (PROJ-XXX-XXX)
+    const isProjectCode = /^PROJ-[A-Z0-9]{3}-\d{3}$/.test(projectId);
+
+    if (!isObjectId && !isProjectCode) {
+        throw new ValidationError(
+            `Invalid ${fieldName.toLowerCase()} ID: "${projectId}". Must be a valid MongoDB ObjectId (24 hex characters) or projectCode (format: PROJ-XXX-XXX)`
+        );
+    }
+
     return true;
 };
 
 // Validate update user data
 const validateUpdateUser = (data) => {
-    const { role, phone, totalExperience } = data;
+    const { role, phone, totalExperience, manager, currentProject, pastProjects } = data;
 
     // Validate role if provided
     if (role && !Object.values(ROLES).includes(role)) {
@@ -72,6 +129,30 @@ const validateUpdateUser = (data) => {
         if (typeof totalExperience !== "number" || totalExperience < 0) {
             throw new ValidationError("Total experience must be a non-negative number");
         }
+    }
+
+    // Validate manager if provided
+    if (manager !== undefined && manager !== null) {
+        validateManagerId(manager);
+    }
+
+    // Validate currentProject if provided
+    if (currentProject !== undefined && currentProject !== null) {
+        validateProjectId(currentProject, "Current project");
+    }
+
+    // Validate pastProjects if provided
+    if (pastProjects !== undefined && pastProjects !== null) {
+        if (!Array.isArray(pastProjects)) {
+            throw new ValidationError("pastProjects must be an array");
+        }
+        // Validate each project ID in the array
+        pastProjects.forEach((projectId, index) => {
+            if (typeof projectId !== "string") {
+                throw new ValidationError(`pastProjects[${index}] must be a string (ObjectId or projectCode)`);
+            }
+            validateProjectId(projectId, `Past project at index ${index}`);
+        });
     }
 
     return true;
@@ -151,5 +232,7 @@ module.exports = {
     validateUpdateStatus,
     validateResetPassword,
     validateGetAllUsersQuery,
+    validateManagerId,
+    validateProjectId,
 };
 
