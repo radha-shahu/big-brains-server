@@ -1,7 +1,9 @@
+const mongoose = require("mongoose");
 const adminProjectService = require("./admin.project.service");
 const adminProjectValidation = require("./admin.project.validation");
 const { asyncHandler } = require("../../middlewares/error.middleware");
 const { validateObjectId, validateNoQueryParams, validateNoUnknownFields } = require("../../utils/validation");
+const { ValidationError } = require("../../utils/errors");
 
 // @desc    Create new project (Admin only)
 // @route   POST /api/admin/projects
@@ -47,13 +49,26 @@ const getAllProjects = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/projects/:projectId
 // @access  Private/Admin
 const getProjectById = asyncHandler(async (req, res) => {
-    // Validate ObjectId
-    validateObjectId(req.params.projectId, "Project ID");
+    // Validate: must be either MongoDB ObjectId or projectCode format
+    const projectId = req.params.projectId;
+    if (!projectId || typeof projectId !== "string") {
+        throw new ValidationError("Project ID is required and must be a string");
+    }
+    
+    // Check if it's a valid ObjectId or projectCode format
+    const isObjectId = mongoose.Types.ObjectId.isValid(projectId) && projectId.length === 24;
+    const isProjectCode = /^PROJ-[A-Z0-9]{3}-\d{3}$/.test(projectId);
+    
+    if (!isObjectId && !isProjectCode) {
+        throw new ValidationError(
+            `Invalid Project ID: "${projectId}". Must be a valid MongoDB ObjectId (24 hex characters) or projectCode (format: PROJ-XXX-XXX)`
+        );
+    }
     
     // No query parameters allowed
     validateNoQueryParams(req.query, "GET /api/admin/projects/:projectId");
     
-    const project = await adminProjectService.getProjectById(req.params.projectId);
+    const project = await adminProjectService.getProjectById(projectId);
 
     res.status(200).json({
         status: "success",
@@ -67,8 +82,21 @@ const getProjectById = asyncHandler(async (req, res) => {
 // @route   PATCH /api/admin/projects/:projectId
 // @access  Private/Admin
 const updateProject = asyncHandler(async (req, res) => {
-    // Validate ObjectId
-    validateObjectId(req.params.projectId, "Project ID");
+    // Validate: must be either MongoDB ObjectId or projectCode format
+    const projectId = req.params.projectId;
+    if (!projectId || typeof projectId !== "string") {
+        throw new ValidationError("Project ID is required and must be a string");
+    }
+    
+    // Check if it's a valid ObjectId or projectCode format
+    const isObjectId = mongoose.Types.ObjectId.isValid(projectId) && projectId.length === 24;
+    const isProjectCode = /^PROJ-[A-Z0-9]{3}-\d{3}$/.test(projectId);
+    
+    if (!isObjectId && !isProjectCode) {
+        throw new ValidationError(
+            `Invalid Project ID: "${projectId}". Must be a valid MongoDB ObjectId (24 hex characters) or projectCode (format: PROJ-XXX-XXX)`
+        );
+    }
     
     // Validate request body
     adminProjectValidation.validateUpdateProject(req.body);

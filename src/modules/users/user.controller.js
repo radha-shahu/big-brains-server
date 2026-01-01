@@ -1,7 +1,9 @@
+const mongoose = require("mongoose");
 const userService = require("./user.service");
 const userValidation = require("./user.validation");
 const { asyncHandler } = require("../../middlewares/error.middleware");
 const { validateObjectId, validateNoQueryParams, validateNoUnknownFields } = require("../../utils/validation");
+const { ValidationError } = require("../../utils/errors");
 
 // @desc    Get all users (Employee directory - read-only)
 // @route   GET /api/users
@@ -24,13 +26,26 @@ const getUsers = asyncHandler(async (req, res) => {
 // @route   GET /api/users/:id
 // @access  Private
 const getUser = asyncHandler(async (req, res) => {
-    // Validate ObjectId
-    validateObjectId(req.params.id, "User ID");
+    // Validate: must be either MongoDB ObjectId or employeeId format
+    const userId = req.params.id;
+    if (!userId || typeof userId !== "string") {
+        throw new ValidationError("User ID is required and must be a string");
+    }
+    
+    // Check if it's a valid ObjectId or employeeId format
+    const isObjectId = mongoose.Types.ObjectId.isValid(userId) && userId.length === 24;
+    const isEmployeeId = /^EMP-\d{4}-\d{4}$/.test(userId);
+    
+    if (!isObjectId && !isEmployeeId) {
+        throw new ValidationError(
+            `Invalid User ID: "${userId}". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)`
+        );
+    }
     
     // No query parameters allowed
     validateNoQueryParams(req.query, "GET /api/users/:id");
     
-    const user = await userService.getUserById(req.params.id);
+    const user = await userService.getUserById(userId);
     res.status(200).json({
         status: "success",
         data: {

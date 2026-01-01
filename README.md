@@ -203,25 +203,25 @@ For detailed structure information, see [PROJECT_STRUCTURE.md](./PROJECT_STRUCTU
 - `GET /api/users` - Get employee directory (Protected)
 - `GET /api/users/me` - Get own profile (Protected)
 - `PATCH /api/users/me` - Update own profile (Protected, restricted fields)
-- `GET /api/users/:id` - Get user by ID (Protected)
+- `GET /api/users/:id` - Get user by ID (Protected) - accepts MongoDB `_id` or `employeeId`
 
 ### Projects (Read-Only)
 - `GET /api/projects` - Get all projects (Protected)
-- `GET /api/projects/:projectId` - Get project by ID (Protected)
+- `GET /api/projects/:projectId` - Get project by ID (Protected) - accepts MongoDB `_id` or `projectCode`
 
 ### Admin - User Management
 - `POST /api/admin/users` - Create user (Admin only)
 - `GET /api/admin/users` - Get all users (Admin only)
-- `GET /api/admin/users/:userId` - Get user by ID (Admin only)
-- `PATCH /api/admin/users/:userId` - Update user (Admin only)
-- `PATCH /api/admin/users/:userId/status` - Enable/disable user (Admin only)
-- `POST /api/admin/users/:userId/reset-password` - Reset password (Admin only)
+- `GET /api/admin/users/:userId` - Get user by ID (Admin only) - accepts MongoDB `_id` or `employeeId`
+- `PATCH /api/admin/users/:userId` - Update user (Admin only) - accepts MongoDB `_id` or `employeeId`
+- `PATCH /api/admin/users/:userId/status` - Enable/disable user (Admin only) - accepts MongoDB `_id` or `employeeId`
+- `POST /api/admin/users/:userId/reset-password` - Reset password (Admin only) - accepts MongoDB `_id` or `employeeId`
 
 ### Admin - Project Management
 - `POST /api/admin/projects` - Create project (Admin only)
 - `GET /api/admin/projects` - Get all projects (Admin only)
-- `GET /api/admin/projects/:projectId` - Get project by ID (Admin only)
-- `PATCH /api/admin/projects/:projectId` - Update project (Admin only)
+- `GET /api/admin/projects/:projectId` - Get project by ID (Admin only) - accepts MongoDB `_id` or `projectCode`
+- `PATCH /api/admin/projects/:projectId` - Update project (Admin only) - accepts MongoDB `_id` or `projectCode`
 
 For complete API documentation with request/response examples, see [API_DOCUMENTATION.md](./API_DOCUMENTATION.md).
 
@@ -393,7 +393,8 @@ The API validates all inputs and returns clear error messages:
 - **Endpoints that don't accept query params reject them**: `GET /api/users/me?role=ADMIN` → Error: "GET /api/users/me does not accept query parameters"
 
 ### Path Parameter Validation
-- **Invalid ObjectIds are rejected**: `GET /api/users/invalid123` → Error: "Invalid User ID: 'invalid123'. Must be a valid MongoDB ObjectId"
+- **Invalid IDs are rejected**: `GET /api/users/invalid123` → Error: "Invalid User ID: 'invalid123'. Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)"
+- **Supports both formats**: You can use either MongoDB `_id` or human-readable IDs (`employeeId`/`projectCode`)
 
 ### Request Body Validation
 - **Unknown fields are rejected**: Sending `employeeId` in create user request → Error: "POST /api/admin/users does not accept the following field(s): employeeId"
@@ -412,15 +413,27 @@ GET /api/admin/users?r=ADMIN
 }
 ```
 
-**Invalid ObjectId:**
+**Invalid ID Format:**
 ```bash
 GET /api/users/invalid123
 # Response: 422
 {
   "status": "fail",
-  "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId",
+  "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)",
   "errorCode": "VALIDATION_ERROR"
 }
+```
+
+**Valid Examples:**
+```bash
+# Using MongoDB _id
+GET /api/admin/users/507f1f77bcf86cd799439011
+
+# Using employeeId (human-readable)
+GET /api/admin/users/EMP-2025-0001
+
+# Using projectCode (human-readable)
+GET /api/projects/PROJ-CRM-001
 ```
 
 **Unknown Field in Request:**
@@ -441,13 +454,53 @@ Body: { "firstName": "John", "role": "ADMIN" }
 - **Format**: `EMP-YYYY-XXXX`
 - **Example**: `EMP-2025-0001`
 - **Generated**: Automatically on user creation
-- **Note**: Clients should never send this field
+- **Note**: Clients should never send this field in request bodies
+- **Usage**: Can be used as `:userId` parameter in API endpoints (alternative to MongoDB `_id`)
 
 ### projectCode
 - **Format**: `PROJ-XXX-XXX`
 - **Example**: `PROJ-CRM-001` (based on project name)
 - **Generated**: Automatically on project creation
-- **Note**: Clients should never send this field
+- **Note**: Clients should never send this field in request bodies
+- **Usage**: Can be used as `:projectId` parameter in API endpoints (alternative to MongoDB `_id`)
+
+## 🆔 ID Parameter Support (Hybrid Approach)
+
+The API supports **dual ID formats** for maximum flexibility:
+
+### User Endpoints
+All endpoints using `:userId` or `:id` accept:
+- **MongoDB `_id`**: 24-character hex string (e.g., `507f1f77bcf86cd799439011`)
+- **employeeId**: Human-readable format (e.g., `EMP-2025-0001`)
+
+**Examples:**
+```bash
+# Using MongoDB _id
+GET /api/admin/users/507f1f77bcf86cd799439011
+
+# Using employeeId (more user-friendly!)
+GET /api/admin/users/EMP-2025-0001
+```
+
+### Project Endpoints
+All endpoints using `:projectId` accept:
+- **MongoDB `_id`**: 24-character hex string (e.g., `507f1f77bcf86cd799439012`)
+- **projectCode**: Human-readable format (e.g., `PROJ-CRM-001`)
+
+**Examples:**
+```bash
+# Using MongoDB _id
+GET /api/projects/507f1f77bcf86cd799439012
+
+# Using projectCode (more user-friendly!)
+GET /api/projects/PROJ-CRM-001
+```
+
+**Why This Approach?**
+- ✅ **Database Efficiency**: MongoDB `_id` remains the primary key (fast, indexed)
+- ✅ **User-Friendly**: Human-readable IDs for better UX
+- ✅ **Flexibility**: Use whichever format is convenient
+- ✅ **Performance**: Both fields are indexed for fast lookups
 
 ## ⚠️ Important Notes
 

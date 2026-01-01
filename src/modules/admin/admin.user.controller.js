@@ -2,6 +2,8 @@ const adminUserService = require("./admin.user.service");
 const adminUserValidation = require("./admin.user.validation");
 const { asyncHandler } = require("../../middlewares/error.middleware");
 const { validateObjectId, validateNoQueryParams, validateNoUnknownFields } = require("../../utils/validation");
+const mongoose = require("mongoose");
+const { ValidationError } = require("../../utils/errors");
 
 // @desc    Create new user (Admin only)
 // @route   POST /api/admin/users
@@ -62,13 +64,26 @@ const getAllUsers = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/users/:userId
 // @access  Private/Admin
 const getUserById = asyncHandler(async (req, res) => {
-    // Validate ObjectId
-    validateObjectId(req.params.userId, "User ID");
+    // Validate: must be either MongoDB ObjectId or employeeId format
+    const userId = req.params.userId;
+    if (!userId || typeof userId !== "string") {
+        throw new ValidationError("User ID is required and must be a string");
+    }
+    
+    // Check if it's a valid ObjectId or employeeId format
+    const isObjectId = mongoose.Types.ObjectId.isValid(userId) && userId.length === 24;
+    const isEmployeeId = /^EMP-\d{4}-\d{4}$/.test(userId);
+    
+    if (!isObjectId && !isEmployeeId) {
+        throw new ValidationError(
+            `Invalid User ID: "${userId}". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)`
+        );
+    }
     
     // No query parameters allowed
     validateNoQueryParams(req.query, "GET /api/admin/users/:userId");
     
-    const user = await adminUserService.getUserById(req.params.userId);
+    const user = await adminUserService.getUserById(userId);
 
     res.status(200).json({
         status: "success",
@@ -82,8 +97,20 @@ const getUserById = asyncHandler(async (req, res) => {
 // @route   PATCH /api/admin/users/:userId
 // @access  Private/Admin
 const updateUser = asyncHandler(async (req, res) => {
-    // Validate ObjectId
-    validateObjectId(req.params.userId, "User ID");
+    // Validate: must be either MongoDB ObjectId or employeeId format
+    const userId = req.params.userId;
+    if (!userId || typeof userId !== "string") {
+        throw new ValidationError("User ID is required and must be a string");
+    }
+    
+    const isObjectId = mongoose.Types.ObjectId.isValid(userId) && userId.length === 24;
+    const isEmployeeId = /^EMP-\d{4}-\d{4}$/.test(userId);
+    
+    if (!isObjectId && !isEmployeeId) {
+        throw new ValidationError(
+            `Invalid User ID: "${userId}". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)`
+        );
+    }
     
     // Validate request body
     adminUserValidation.validateUpdateUser(req.body);
@@ -118,8 +145,20 @@ const updateUser = asyncHandler(async (req, res) => {
 // @route   PATCH /api/admin/users/:userId/status
 // @access  Private/Admin
 const updateUserStatus = asyncHandler(async (req, res) => {
-    // Validate ObjectId
-    validateObjectId(req.params.userId, "User ID");
+    // Validate: must be either MongoDB ObjectId or employeeId format
+    const userId = req.params.userId;
+    if (!userId || typeof userId !== "string") {
+        throw new ValidationError("User ID is required and must be a string");
+    }
+    
+    const isObjectId = mongoose.Types.ObjectId.isValid(userId) && userId.length === 24;
+    const isEmployeeId = /^EMP-\d{4}-\d{4}$/.test(userId);
+    
+    if (!isObjectId && !isEmployeeId) {
+        throw new ValidationError(
+            `Invalid User ID: "${userId}". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)`
+        );
+    }
     
     // Validate request body
     adminUserValidation.validateUpdateStatus(req.body);
@@ -143,8 +182,20 @@ const updateUserStatus = asyncHandler(async (req, res) => {
 // @route   POST /api/admin/users/:userId/reset-password
 // @access  Private/Admin
 const resetPassword = asyncHandler(async (req, res) => {
-    // Validate ObjectId
-    validateObjectId(req.params.userId, "User ID");
+    // Validate: must be either MongoDB ObjectId or employeeId format
+    const userId = req.params.userId;
+    if (!userId || typeof userId !== "string") {
+        throw new ValidationError("User ID is required and must be a string");
+    }
+    
+    const isObjectId = mongoose.Types.ObjectId.isValid(userId) && userId.length === 24;
+    const isEmployeeId = /^EMP-\d{4}-\d{4}$/.test(userId);
+    
+    if (!isObjectId && !isEmployeeId) {
+        throw new ValidationError(
+            `Invalid User ID: "${userId}". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)`
+        );
+    }
     
     // Validate request body
     adminUserValidation.validateResetPassword(req.body);

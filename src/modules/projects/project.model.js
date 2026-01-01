@@ -6,6 +6,7 @@ const projectSchema = new mongoose.Schema(
             type: String,
             unique: true,
             sparse: true, // Allow null values but enforce uniqueness when present
+            index: true, // Create index for faster lookups
         },
         name: {
             type: String,

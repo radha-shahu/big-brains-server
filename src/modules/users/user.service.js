@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("./user.model");
 const { NotFoundError, ConflictError, ForbiddenError, ERROR_CODES } = require("../../utils/errors");
 const { userDTO, userListDTO } = require("./user.dto");
@@ -13,11 +14,24 @@ const getAllUsers = async () => {
 };
 
 // Get user by ID
+// Supports both MongoDB _id and employeeId
 const getUserById = async (userId) => {
-    const user = await User.findById(userId)
-        .populate("manager", "firstName lastName email employeeId")
-        .populate("currentProject", "name projectCode")
-        .populate("pastProjects", "name projectCode");
+    let user;
+    
+    // Check if it's a MongoDB ObjectId (24 hex characters)
+    if (mongoose.Types.ObjectId.isValid(userId) && userId.length === 24) {
+        // Query by MongoDB _id
+        user = await User.findById(userId)
+            .populate("manager", "firstName lastName email employeeId")
+            .populate("currentProject", "name projectCode")
+            .populate("pastProjects", "name projectCode");
+    } else {
+        // Query by employeeId (e.g., EMP-2025-0001)
+        user = await User.findOne({ employeeId: userId })
+            .populate("manager", "firstName lastName email employeeId")
+            .populate("currentProject", "name projectCode")
+            .populate("pastProjects", "name projectCode");
+    }
 
     if (!user) {
         throw new NotFoundError("User not found");

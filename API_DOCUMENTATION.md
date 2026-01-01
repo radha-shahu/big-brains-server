@@ -403,6 +403,10 @@ Get user details by ID.
 - **Endpoint**: `GET /api/users/:id`
 - **Access**: Private (All authenticated users)
 
+**Important**: The `:id` parameter accepts **either**:
+- MongoDB `_id` (e.g., `507f1f77bcf86cd799439011`)
+- `employeeId` (e.g., `EMP-2025-0001`)
+
 ---
 
 ## Project Endpoints (Read-Only)
@@ -479,17 +483,25 @@ Get project details by ID.
 - **Endpoint**: `GET /api/projects/:projectId`
 - **Access**: Private (All authenticated users)
 
-**Note**: This endpoint does not accept query parameters. The `projectId` must be a valid MongoDB ObjectId.
+**Important**: The `:projectId` parameter accepts **either**:
+- MongoDB `_id` (returned as `id` in API responses) - e.g., `507f1f77bcf86cd799439012`
+- `projectCode` (human-readable format) - e.g., `PROJ-CRM-001`
+
+**Examples:**
+- ✅ Valid: `/api/projects/507f1f77bcf86cd799439012` (MongoDB ObjectId)
+- ✅ Valid: `/api/projects/PROJ-CRM-001` (projectCode)
+
+**Note**: This endpoint does not accept query parameters.
 
 #### Error Responses
 
 **Status Code**: `422 Validation Error`
 
-**Scenario**: Invalid ObjectId format
+**Scenario**: Invalid ID format (neither ObjectId nor projectCode)
 ```json
 {
   "status": "fail",
-  "message": "Invalid Project ID: \"invalid123\". Must be a valid MongoDB ObjectId",
+  "message": "Invalid Project ID: \"invalid123\". Must be a valid MongoDB ObjectId (24 hex characters) or projectCode (format: PROJ-XXX-XXX)",
   "errorCode": "VALIDATION_ERROR"
 }
 ```
@@ -655,17 +667,25 @@ Get user details by ID.
 - **Endpoint**: `GET /api/admin/users/:userId`
 - **Access**: Private/Admin
 
-**Note**: This endpoint does not accept query parameters. The `userId` must be a valid MongoDB ObjectId.
+**Important**: The `:userId` parameter accepts **either**:
+- MongoDB `_id` (returned as `id` in API responses) - e.g., `507f1f77bcf86cd799439011`
+- `employeeId` (human-readable format) - e.g., `EMP-2025-0001`
+
+**Examples:**
+- ✅ Valid: `/api/admin/users/507f1f77bcf86cd799439011` (MongoDB ObjectId)
+- ✅ Valid: `/api/admin/users/EMP-2025-0001` (employeeId)
+
+**Note**: This endpoint does not accept query parameters.
 
 #### Error Responses
 
 **Status Code**: `422 Validation Error`
 
-**Scenario 1**: Invalid ObjectId format
+**Scenario 1**: Invalid ID format (neither ObjectId nor employeeId)
 ```json
 {
   "status": "fail",
-  "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId",
+  "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)",
   "errorCode": "VALIDATION_ERROR"
 }
 ```
@@ -688,6 +708,10 @@ Update user details (Admin only fields).
 - **Endpoint**: `PATCH /api/admin/users/:userId`
 - **Access**: Private/Admin
 - **Description**: Admin can update: role, designation, department, manager, currentProject, pastProjects, dateOfJoining, totalExperience, location, isActive
+
+**Important**: The `:userId` parameter accepts **either**:
+- MongoDB `_id` (e.g., `507f1f77bcf86cd799439011`)
+- `employeeId` (e.g., `EMP-2025-0001`)
 
 #### Request Body
 ```json
@@ -714,11 +738,11 @@ Update user details (Admin only fields).
 }
 ```
 
-**Scenario 2**: Invalid ObjectId
+**Scenario 2**: Invalid ID format
 ```json
 {
   "status": "fail",
-  "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId",
+  "message": "Invalid User ID: \"invalid123\". Must be a valid MongoDB ObjectId (24 hex characters) or employeeId (format: EMP-YYYY-XXXX)",
   "errorCode": "VALIDATION_ERROR"
 }
 ```
@@ -747,6 +771,10 @@ Enable or disable a user.
 
 - **Endpoint**: `PATCH /api/admin/users/:userId/status`
 - **Access**: Private/Admin
+
+**Important**: The `:userId` parameter accepts **either**:
+- MongoDB `_id` (e.g., `507f1f77bcf86cd799439011`)
+- `employeeId` (e.g., `EMP-2025-0001`)
 
 #### Request Body
 ```json
@@ -782,6 +810,10 @@ Reset a user's password (Admin only).
 
 - **Endpoint**: `POST /api/admin/users/:userId/reset-password`
 - **Access**: Private/Admin
+
+**Important**: The `:userId` parameter accepts **either**:
+- MongoDB `_id` (e.g., `507f1f77bcf86cd799439011`)
+- `employeeId` (e.g., `EMP-2025-0001`)
 
 #### Request Body
 ```json
@@ -891,6 +923,10 @@ Get project details by ID.
 - **Endpoint**: `GET /api/admin/projects/:projectId`
 - **Access**: Private/Admin
 
+**Important**: The `:projectId` parameter accepts **either**:
+- MongoDB `_id` (e.g., `507f1f77bcf86cd799439012`)
+- `projectCode` (e.g., `PROJ-CRM-001`)
+
 ---
 
 ### 4. Update Project
@@ -900,6 +936,10 @@ Update project details.
 - **Endpoint**: `PATCH /api/admin/projects/:projectId`
 - **Access**: Private/Admin
 - **Description**: Admin can update: name, description, status, startDate, endDate, clientName
+
+**Important**: The `:projectId` parameter accepts **either**:
+- MongoDB `_id` (e.g., `507f1f77bcf86cd799439012`)
+- `projectCode` (e.g., `PROJ-CRM-001`)
 
 #### Request Body
 ```json
@@ -1021,13 +1061,53 @@ Update project details.
 - **Format**: `EMP-YYYY-XXXX`
 - **Example**: `EMP-2025-0001`
 - **Generated**: On user creation
-- **Client**: Never send this field
+- **Client**: Never send this field in request bodies
+- **Usage**: Can be used as `:userId` parameter in API endpoints (alternative to MongoDB `_id`)
 
 ### projectCode
 - **Format**: `PROJ-XXX-XXX`
 - **Example**: `PROJ-CRM-001` (based on project name)
 - **Generated**: On project creation
-- **Client**: Never send this field
+- **Client**: Never send this field in request bodies
+- **Usage**: Can be used as `:projectId` parameter in API endpoints (alternative to MongoDB `_id`)
+
+## ID Parameter Support
+
+The API supports **dual ID formats** for better flexibility:
+
+### User Endpoints
+All endpoints that use `:userId` or `:id` accept:
+- **MongoDB `_id`**: 24-character hexadecimal string (e.g., `507f1f77bcf86cd799439011`)
+- **employeeId**: Human-readable format (e.g., `EMP-2025-0001`)
+
+**Examples:**
+```bash
+# Using MongoDB _id
+GET /api/admin/users/507f1f77bcf86cd799439011
+
+# Using employeeId
+GET /api/admin/users/EMP-2025-0001
+```
+
+### Project Endpoints
+All endpoints that use `:projectId` accept:
+- **MongoDB `_id`**: 24-character hexadecimal string (e.g., `507f1f77bcf86cd799439012`)
+- **projectCode**: Human-readable format (e.g., `PROJ-CRM-001`)
+
+**Examples:**
+```bash
+# Using MongoDB _id
+GET /api/projects/507f1f77bcf86cd799439012
+
+# Using projectCode
+GET /api/projects/PROJ-CRM-001
+```
+
+**Benefits:**
+- ✅ Human-readable IDs for better UX
+- ✅ Database efficiency with MongoDB `_id` as primary key
+- ✅ Flexibility to use either format
+- ✅ Both formats are indexed for fast lookups
 
 ---
 
@@ -1075,9 +1155,13 @@ curl -X POST http://localhost:3000/api/admin/users \
 - Enhanced user and project models with additional fields
 - **Added comprehensive input validation**:
   - Query parameter validation (rejects unknown/invalid parameters)
-  - Path parameter validation (validates ObjectIds)
+  - Path parameter validation (validates ObjectIds and custom IDs)
   - Request body validation (rejects unknown fields)
   - Clear error messages for all validation failures
+- **Added dual ID support**:
+  - All user endpoints accept both MongoDB `_id` and `employeeId`
+  - All project endpoints accept both MongoDB `_id` and `projectCode`
+  - Human-readable IDs for better UX while maintaining database efficiency
 
 ### Version 1.0.0
 - Initial API release

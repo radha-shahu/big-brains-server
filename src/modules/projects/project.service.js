@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Project = require("./project.model");
 const { NotFoundError } = require("../../utils/errors");
 const { projectDTO, projectListDTO } = require("./project.dto");
@@ -25,8 +26,18 @@ const getAllProjects = async (filters = {}) => {
 };
 
 // Get project by ID
+// Supports both MongoDB _id and projectCode
 const getProjectById = async (projectId) => {
-    const project = await Project.findById(projectId);
+    let project;
+    
+    // Check if it's a MongoDB ObjectId (24 hex characters)
+    if (mongoose.Types.ObjectId.isValid(projectId) && projectId.length === 24) {
+        // Query by MongoDB _id
+        project = await Project.findById(projectId);
+    } else {
+        // Query by projectCode (e.g., PROJ-CRM-001)
+        project = await Project.findOne({ projectCode: projectId });
+    }
 
     if (!project) {
         throw new NotFoundError("Project not found");

@@ -86,11 +86,24 @@ const getAllUsers = async (filters = {}) => {
 };
 
 // Get user by ID (Admin only)
+// Supports both MongoDB _id and employeeId
 const getUserById = async (userId) => {
-    const user = await User.findById(userId)
-        .populate("manager", "firstName lastName email employeeId")
-        .populate("currentProject", "name projectCode")
-        .populate("pastProjects", "name projectCode");
+    let user;
+    
+    // Check if it's a MongoDB ObjectId (24 hex characters)
+    if (mongoose.Types.ObjectId.isValid(userId) && userId.length === 24) {
+        // Query by MongoDB _id
+        user = await User.findById(userId)
+            .populate("manager", "firstName lastName email employeeId")
+            .populate("currentProject", "name projectCode")
+            .populate("pastProjects", "name projectCode");
+    } else {
+        // Query by employeeId (e.g., EMP-2025-0001)
+        user = await User.findOne({ employeeId: userId })
+            .populate("manager", "firstName lastName email employeeId")
+            .populate("currentProject", "name projectCode")
+            .populate("pastProjects", "name projectCode");
+    }
 
     if (!user) {
         throw new NotFoundError("User not found");
@@ -100,7 +113,17 @@ const getUserById = async (userId) => {
 };
 
 // Update user (Admin only)
+// Supports both MongoDB _id and employeeId
 const updateUser = async (userId, updateData) => {
+    let user;
+    let query;
+    
+    // Check if it's a MongoDB ObjectId (24 hex characters)
+    if (mongoose.Types.ObjectId.isValid(userId) && userId.length === 24) {
+        query = { _id: userId };
+    } else {
+        query = { employeeId: userId };
+    }
     const allowedFields = [
         "role",
         "designation",
@@ -124,7 +147,7 @@ const updateUser = async (userId, updateData) => {
 
     // Handle pastProjects - if provided, append to existing array
     if (updateData.pastProjects && Array.isArray(updateData.pastProjects)) {
-        const user = await User.findById(userId);
+        user = await User.findOne(query);
         if (user) {
             // Merge with existing pastProjects, avoiding duplicates
             const existingProjects = user.pastProjects || [];
@@ -135,7 +158,7 @@ const updateUser = async (userId, updateData) => {
         }
     }
 
-    const user = await User.findByIdAndUpdate(userId, filteredData, {
+    user = await User.findOneAndUpdate(query, filteredData, {
         new: true,
         runValidators: true,
     })
@@ -151,9 +174,19 @@ const updateUser = async (userId, updateData) => {
 };
 
 // Update user status (enable/disable)
+// Supports both MongoDB _id and employeeId
 const updateUserStatus = async (userId, isActive) => {
-    const user = await User.findByIdAndUpdate(
-        userId,
+    let query;
+    
+    // Check if it's a MongoDB ObjectId (24 hex characters)
+    if (mongoose.Types.ObjectId.isValid(userId) && userId.length === 24) {
+        query = { _id: userId };
+    } else {
+        query = { employeeId: userId };
+    }
+    
+    const user = await User.findOneAndUpdate(
+        query,
         { isActive },
         { new: true, runValidators: true }
     );
@@ -166,8 +199,16 @@ const updateUserStatus = async (userId, isActive) => {
 };
 
 // Reset user password (Admin only)
+// Supports both MongoDB _id and employeeId
 const resetPassword = async (userId, newPassword) => {
-    const user = await User.findById(userId).select("+password");
+    let user;
+    
+    // Check if it's a MongoDB ObjectId (24 hex characters)
+    if (mongoose.Types.ObjectId.isValid(userId) && userId.length === 24) {
+        user = await User.findById(userId).select("+password");
+    } else {
+        user = await User.findOne({ employeeId: userId }).select("+password");
+    }
 
     if (!user) {
         throw new NotFoundError("User not found");

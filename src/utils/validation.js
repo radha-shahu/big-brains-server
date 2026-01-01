@@ -20,6 +20,15 @@ const validateObjectId = (id, fieldName = "ID") => {
 };
 
 /**
+ * Check if a string is a valid MongoDB ObjectId
+ * @param {string} id - The ID to check
+ * @returns {boolean}
+ */
+const isObjectId = (id) => {
+    return mongoose.Types.ObjectId.isValid(id) && id.length === 24;
+};
+
+/**
  * Validate that no query parameters are provided
  * @param {object} queryParams - Request query parameters
  * @param {string} endpointName - Name of endpoint for error message
