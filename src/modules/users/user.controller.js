@@ -2,9 +2,9 @@ const userService = require("./user.service");
 const userValidation = require("./user.validation");
 const { asyncHandler } = require("../../middlewares/error.middleware");
 
-// @desc    Get all users
+// @desc    Get all users (Employee directory - read-only)
 // @route   GET /api/users
-// @access  Public
+// @access  Private (All authenticated users)
 const getUsers = asyncHandler(async (req, res) => {
     const users = await userService.getAllUsers();
     res.status(200).json({
@@ -18,7 +18,7 @@ const getUsers = asyncHandler(async (req, res) => {
 
 // @desc    Get single user
 // @route   GET /api/users/:id
-// @access  Public
+// @access  Private
 const getUser = asyncHandler(async (req, res) => {
     const user = await userService.getUserById(req.params.id);
     res.status(200).json({
@@ -29,53 +29,28 @@ const getUser = asyncHandler(async (req, res) => {
     });
 });
 
-// @desc    Create user
-// @route   POST /api/users
-// @access  Public
-const createUser = asyncHandler(async (req, res) => {
-    userValidation.validateCreateUser(req.body);
-    const user = await userService.createUser(req.body);
-    res.status(201).json({
-        status: "success",
-        data: {
-            user,
-        },
-    });
-});
-
-// @desc    Update user
-// @route   PUT /api/users/:id
-// @access  Public
-const updateUser = asyncHandler(async (req, res) => {
-    userValidation.validateUpdateUser(req.body);
-    const user = await userService.updateUser(req.params.id, req.body);
-    res.status(200).json({
-        status: "success",
-        data: {
-            user,
-        },
-    });
-});
-
-// @desc    Delete user
-// @route   DELETE /api/users/:id
-// @access  Public
-const deleteUser = asyncHandler(async (req, res) => {
-    await userService.deleteUser(req.params.id);
-    res.status(204).json({
-        status: "success",
-        data: null,
-    });
-});
-
-// @desc    Get current user profile (protected route example)
-// @route   GET /api/users/me/profile
+// @desc    Get current user profile
+// @route   GET /api/users/me
 // @access  Private
 const getMyProfile = asyncHandler(async (req, res) => {
-    // req.user is set by protect middleware
-    const user = await userService.getUserById(req.user._id);
+    const user = await userService.getMyProfile(req.user._id);
     res.status(200).json({
         status: "success",
+        data: {
+            user,
+        },
+    });
+});
+
+// @desc    Update own profile (restricted fields only)
+// @route   PATCH /api/users/me
+// @access  Private
+const updateMyProfile = asyncHandler(async (req, res) => {
+    userValidation.validateUpdateMyProfile(req.body);
+    const user = await userService.updateMyProfile(req.user._id, req.body);
+    res.status(200).json({
+        status: "success",
+        message: "Profile updated successfully",
         data: {
             user,
         },
@@ -85,9 +60,6 @@ const getMyProfile = asyncHandler(async (req, res) => {
 module.exports = {
     getUsers,
     getUser,
-    createUser,
-    updateUser,
-    deleteUser,
     getMyProfile,
+    updateMyProfile,
 };
-

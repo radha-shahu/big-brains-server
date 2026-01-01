@@ -3,12 +3,20 @@ const router = express.Router();
 const userController = require("./user.controller");
 const { protect } = require("../../middlewares/auth.middleware");
 
-// Public routes
-router.route("/").get(userController.getUsers).post(userController.createUser);
-router.route("/:id").get(userController.getUser).put(userController.updateUser).delete(userController.deleteUser);
+// All routes require authentication
+router.use(protect);
 
-// Protected routes (require authentication)
-router.get("/me/profile", protect, userController.getMyProfile);
+// Employee directory (read-only, limited info)
+router.get("/", userController.getUsers);
+
+// Get own profile
+router.get("/me", userController.getMyProfile);
+
+// Update own profile (restricted fields only)
+router.patch("/me", userController.updateMyProfile);
+
+// Get single user by ID
+router.get("/:id", userController.getUser);
 
 module.exports = router;
 

@@ -58,6 +58,7 @@ const errorHandler = (err, req, res, next) => {
         res.status(err.statusCode).json({
             status: err.status,
             message: err.message,
+            errorCode: err.errorCode,
             ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
         });
     } else {
@@ -66,6 +67,7 @@ const errorHandler = (err, req, res, next) => {
         res.status(500).json({
             status: "error",
             message: "Something went wrong!",
+            errorCode: "INTERNAL_SERVER_ERROR",
             ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
         });
     }

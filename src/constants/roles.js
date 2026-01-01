@@ -1,8 +1,8 @@
-// User roles constants (for future use)
+// User roles constants
 const ROLES = {
-    USER: "user",
-    ADMIN: "admin",
-    MODERATOR: "moderator",
+    ADMIN: "ADMIN",
+    EMPLOYEE: "EMPLOYEE",
+    MANAGER: "MANAGER",
 };
 
 module.exports = {

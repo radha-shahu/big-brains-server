@@ -1,29 +1,32 @@
-const { BadRequestError } = require("../../utils/errors");
+const { ValidationError } = require("../../utils/errors");
 
-// Validate user creation data
-const validateCreateUser = (data) => {
-    const { name, email } = data;
+// Validate update my profile data (restricted fields)
+const validateUpdateMyProfile = (data) => {
+    const { email, phone, skills } = data;
 
-    if (!name || !email) {
-        throw new BadRequestError("Name and email are required");
-    }
-
-    // Email format validation (basic)
-    const emailRegex = /^\S+@\S+\.\S+$/;
-    if (!emailRegex.test(email)) {
-        throw new BadRequestError("Please provide a valid email");
-    }
-
-    return true;
-};
-
-// Validate user update data
-const validateUpdateUser = (data) => {
-    // Allow partial updates, but validate what's provided
-    if (data.email) {
+    // Email format validation if provided
+    if (email) {
         const emailRegex = /^\S+@\S+\.\S+$/;
-        if (!emailRegex.test(data.email)) {
-            throw new BadRequestError("Please provide a valid email");
+        if (!emailRegex.test(email)) {
+            throw new ValidationError("Please provide a valid email");
+        }
+    }
+
+    // Validate phone format if provided
+    if (phone && phone.trim().length > 0) {
+        const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
+        if (!phoneRegex.test(phone)) {
+            throw new ValidationError("Please provide a valid phone number");
+        }
+    }
+
+    // Validate skills if provided (should be an array of strings)
+    if (skills !== undefined) {
+        if (!Array.isArray(skills)) {
+            throw new ValidationError("Skills must be an array");
+        }
+        if (skills.some((skill) => typeof skill !== "string" || skill.trim().length === 0)) {
+            throw new ValidationError("All skills must be non-empty strings");
         }
     }
 
@@ -31,7 +34,5 @@ const validateUpdateUser = (data) => {
 };
 
 module.exports = {
-    validateCreateUser,
-    validateUpdateUser,
+    validateUpdateMyProfile,
 };
-

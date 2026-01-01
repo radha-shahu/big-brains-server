@@ -2,23 +2,6 @@ const authService = require("./auth.service");
 const authValidation = require("./auth.validation");
 const { asyncHandler } = require("../../middlewares/error.middleware");
 
-// @desc    Register new user
-// @route   POST /api/auth/register
-// @access  Public
-const register = asyncHandler(async (req, res) => {
-    authValidation.validateRegister(req.body);
-    const { user, token } = await authService.register(req.body);
-
-    res.status(201).json({
-        status: "success",
-        message: "User registered successfully",
-        token,
-        data: {
-            user,
-        },
-    });
-});
-
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
@@ -37,6 +20,24 @@ const login = asyncHandler(async (req, res) => {
     });
 });
 
+// @desc    Change password
+// @route   POST /api/auth/change-password
+// @access  Private (Protected)
+const changePassword = asyncHandler(async (req, res) => {
+    authValidation.validateChangePassword(req.body);
+    const { currentPassword, newPassword } = req.body;
+    const result = await authService.changePassword(
+        req.user._id,
+        currentPassword,
+        newPassword
+    );
+
+    res.status(200).json({
+        status: "success",
+        message: result.message,
+    });
+});
+
 // @desc    Get current logged in user
 // @route   GET /api/auth/me
 // @access  Private (Protected)
@@ -52,8 +53,8 @@ const getMe = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-    register,
     login,
+    changePassword,
     getMe,
 };
 

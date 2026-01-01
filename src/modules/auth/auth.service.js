@@ -1,24 +1,27 @@
 const User = require("../users/user.model");
-const { BadRequestError, UnauthorizedError } = require("../../utils/errors");
+const { BadRequestError, UnauthorizedError, ERROR_CODES } = require("../../utils/errors");
 const { generateToken } = require("../../utils/jwt");
 const { userDTO } = require("../users/user.dto");
 
-// Register new user
-const register = async (userData) => {
-    const { name, email, password } = userData;
+// Login user
+const login = async (email, password) => {
+    // Find user and include password (since it's select: false by default)
+    const user = await User.findOne({ email }).select("+password");
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-        throw new BadRequestError("User with this email already exists");
+    // Check if user exists
+    if (!user) {
+        throw new UnauthorizedError("Invalid email or password", ERROR_CODES.INVALID_CREDENTIALS);
     }
 
-    // Create user
-    const user = await User.create({
-        name,
-        email,
-        password,
-    });
+    // Check if user is active
+    if (!user.isActive) {
+        throw new UnauthorizedError("Your account has been disabled. Please contact administrator.", ERROR_CODES.ACCOUNT_DISABLED);
+    }
+
+    // Check if password is correct
+    if (!(await user.comparePassword(password))) {
+        throw new UnauthorizedError("Invalid email or password", ERROR_CODES.INVALID_CREDENTIALS);
+    }
 
     // Generate JWT token
     const token = generateToken(user._id);
@@ -29,22 +32,32 @@ const register = async (userData) => {
     };
 };
 
-// Login user
-const login = async (email, password) => {
-    // Find user and include password (since it's select: false by default)
-    const user = await User.findOne({ email }).select("+password");
+// Change password
+const changePassword = async (userId, currentPassword, newPassword) => {
+    // Find user and include password
+    const user = await User.findById(userId).select("+password");
 
-    // Check if user exists and password is correct
-    if (!user || !(await user.comparePassword(password))) {
-        throw new UnauthorizedError("Invalid email or password");
+    if (!user) {
+        throw new BadRequestError("User not found", ERROR_CODES.RESOURCE_NOT_FOUND);
     }
 
-    // Generate JWT token
-    const token = generateToken(user._id);
+    // Check if user is active
+    if (!user.isActive) {
+        throw new UnauthorizedError("Your account has been disabled. Please contact administrator.", ERROR_CODES.ACCOUNT_DISABLED);
+    }
+
+    // Verify current password
+    if (!(await user.comparePassword(currentPassword))) {
+        throw new UnauthorizedError("Current password is incorrect", ERROR_CODES.INVALID_CREDENTIALS);
+    }
+
+    // Update password
+    user.password = newPassword;
+    user.isFirstLogin = false; // Mark that user has changed password
+    await user.save();
 
     return {
-        user: userDTO(user),
-        token,
+        message: "Password changed successfully",
     };
 };
 
@@ -54,8 +67,8 @@ const getMe = (user) => {
 };
 
 module.exports = {
-    register,
     login,
+    changePassword,
     getMe,
 };
 

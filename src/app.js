@@ -1,6 +1,9 @@
 const express = require("express");
 const authRoutes = require("./modules/auth/auth.routes");
 const userRoutes = require("./modules/users/user.routes");
+const projectRoutes = require("./modules/projects/project.routes");
+const adminUserRoutes = require("./modules/admin/admin.user.routes");
+const adminProjectRoutes = require("./modules/admin/admin.project.routes");
 const { errorHandler, notFoundHandler } = require("./middlewares/error.middleware");
 
 const app = express();
@@ -21,6 +24,9 @@ app.get("/api", (req, res) => {
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/admin/users", adminUserRoutes);
+app.use("/api/admin/projects", adminProjectRoutes);
 
 // 404 Handler - must be after all routes
 app.use(notFoundHandler);
